@@ -1,0 +1,11 @@
+node_modules/
+.env
+secrets/*.pem
+.DS_Store
+.claude/settings.local.json
+
+# SuiteCloud CLI may persist auth-id/credential state locally; keep it out of git
+# defensively until we've confirmed exactly what it writes and where.
+.suitecloud-sdk/
+sdf/.suitecloud-sdk/
+*.credentials

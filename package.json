@@ -1,0 +1,26 @@
+{
+  "name": "netsuite-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server exposing NetSuite REST Record API operations (create/read/update/delete/query) as tools",
+  "main": "src/server.js",
+  "bin": {
+    "netsuite-mcp": "src/server.js"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "start:http": "node src/httpServer.js",
+    "sdf:auth": "node src/sdf/runAuth.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@oracle/suitecloud-cli": "^3.2.0",
+    "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "zod": "^3.23.8"
+  }
+}
