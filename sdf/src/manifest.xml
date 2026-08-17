@@ -1,0 +1,16 @@
+<manifest projecttype="ACCOUNTCUSTOMIZATION">
+    <projectname>netsuite-mcp-sdf</projectname>
+    <frameworkversion>1.0</frameworkversion>
+    <dependencies>
+        <features>
+            <feature required="true">CUSTOMRECORDS</feature>
+            <feature required="true">CUSTOMSEGMENTS</feature>
+            <feature required="true">CUSTOMTRANSACTIONS</feature>
+            <feature required="true">SERVERSIDESCRIPTING</feature>
+            <feature required="true">WORKFLOW</feature>
+            <feature required="true">ADVANCEDPRINTING</feature>
+            <feature required="true">CRM</feature>
+            <feature required="true">ADVANCEDJOBS</feature>
+        </features>
+    </dependencies>
+</manifest>

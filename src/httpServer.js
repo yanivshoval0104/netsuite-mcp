@@ -4,21 +4,37 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { loadConfig } from "./config.js";
 import { registerTools } from "./registerTools.js";
+import { registerSdfTools } from "./registerSdfTools.js";
 
 // =============================================================
 // NetSuite MCP Server — remote entry point.
-// Hosted on Render, Streamable HTTP transport, stateless (a fresh
-// McpServer + transport per request — no session affinity needed
-// across Render instances/restarts).
+// Hosted on Render (Docker runtime — see Dockerfile), Streamable HTTP
+// transport. A fresh McpServer + transport is created per request (no
+// session affinity needed across Render restarts), but registerSdfTools
+// shares one process-wide mutex (see registerSdfTools.js) across all of
+// those per-request McpServer instances, since they all share the same
+// underlying sdf/ project directory and suitecloud CLI state.
+//
+// Requires the Docker runtime (not Render's native Node runtime) — the SDF
+// tools shell out to the Java-backed `suitecloud` CLI, and Render's native
+// Node runtime has no system package access to install a JRE. Also
+// requires a Secret File for the private key (NETSUITE_SDF_PRIVATE_KEY_PATH
+// should point at that mount path, not a local ./secrets/... path) and a
+// fixed instance count of 1 (no autoscaling) — the mutex only protects a
+// single process.
 //
 // Render start command:
 //   npm run start:http
 //
 // Env vars:
 //   NETSUITE_ACCOUNT_ID, NETSUITE_CONSUMER_KEY, NETSUITE_CONSUMER_SECRET,
-//   NETSUITE_TOKEN_ID, NETSUITE_TOKEN_SECRET   (see config.js)
-//   MCP_SERVER_TOKEN   (optional — if set, every request to /mcp must
-//                       carry "Authorization: Bearer <that token>")
+//   NETSUITE_TOKEN_ID, NETSUITE_TOKEN_SECRET   (see config.js — REST data tools)
+//   NETSUITE_SDF_AUTH_ID, NETSUITE_SDF_CERTIFICATE_ID,
+//   NETSUITE_SDF_PRIVATE_KEY_PATH, SUITECLOUD_CI, SUITECLOUD_CI_PASSKEY
+//                       (SDF metadata tools — see NETSUITE_ADMIN_SETUP.md)
+//   MCP_SERVER_TOKEN   (strongly recommended once SDF tools are exposed —
+//                       if set, every request to /mcp must carry
+//                       "Authorization: Bearer <that token>")
 //   PORT               (Render sets this automatically)
 // =============================================================
 
@@ -46,6 +62,7 @@ app.post("/mcp", requireBearerToken, async (req, res) => {
   try {
     const server = new McpServer({ name: "netsuite-mcp", version: "0.1.0" });
     registerTools(server, config);
+    registerSdfTools(server);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
 
     res.on("close", () => {

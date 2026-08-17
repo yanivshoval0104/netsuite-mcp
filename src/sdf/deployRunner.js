@@ -34,8 +34,12 @@ function runSuitecloud(args) {
 /**
  * Ensures the SuiteCloud CLI has a saved CI auth id for this account, by
  * running `account:setup:ci` if the configured authid isn't already known.
- * Idempotent-ish: if it's already set up, this just re-registers the same
- * cert/key, which is harmless.
+ * NOT idempotent by default — re-running account:setup:ci with an authid
+ * that's already registered fails with "This authentication ID is already in
+ * use" (exit code 1), even though nothing is actually wrong. When that
+ * specific failure happens, fall back to `--select` to just make the
+ * already-registered authid the project default again, which is what every
+ * caller here actually needs.
  */
 export async function ensureCiAuth() {
   const accountId = requiredEnv("NETSUITE_ACCOUNT_ID");
@@ -43,21 +47,37 @@ export async function ensureCiAuth() {
   const certificateId = requiredEnv("NETSUITE_SDF_CERTIFICATE_ID");
   const privateKeyPath = requiredEnv("NETSUITE_SDF_PRIVATE_KEY_PATH");
 
-  return runSuitecloud([
+  // Passed relative to SDF_PROJECT_DIR (the child process's cwd), not as an absolute path —
+  // this repo lives under a directory with a space in its name ("Salesforce Projects"), and the
+  // suitecloud CLI's internal process invocation mis-splits absolute paths containing spaces
+  // ("Option '-privatekeypath' expects only one value"). A relative path never spells out the
+  // space-containing parent directory as literal argument text, so it can't be split there.
+  const absoluteKeyPath = path.resolve(SDF_PROJECT_DIR, "..", privateKeyPath);
+  const relativeKeyPath = path.relative(SDF_PROJECT_DIR, absoluteKeyPath);
+
+  const result = await runSuitecloud([
     "account:setup:ci",
     "--account", accountId,
     "--authid", authId,
     "--certificateid", certificateId,
-    "--privatekeypath", path.resolve(SDF_PROJECT_DIR, "..", privateKeyPath),
+    "--privatekeypath", relativeKeyPath,
   ]);
+
+  if (result.code !== 0 && /already in use/i.test(result.stdout + result.stderr)) {
+    return runSuitecloud(["account:setup:ci", "--select", authId]);
+  }
+
+  return result;
 }
 
 /**
  * Validates the SDF project against the account without deploying anything.
+ * No --authid here — project:validate doesn't accept that option at all; it
+ * always uses whatever ensureCiAuth() most recently set as the project's
+ * default auth (account:setup:ci is what controls the default, not per-call flags).
  */
 export async function validateProject() {
-  const authId = requiredEnv("NETSUITE_SDF_AUTH_ID");
-  return runSuitecloud(["project:validate", "--authid", authId]);
+  return runSuitecloud(["project:validate"]);
 }
 
 /**
@@ -65,10 +85,21 @@ export async function validateProject() {
  * to the live account. This is a real, mutating operation on the account.
  */
 export async function deployProject() {
-  const authId = requiredEnv("NETSUITE_SDF_AUTH_ID");
+  return runSuitecloud(["project:deploy", "--accountspecificvalues", "WARNING"]);
+}
+
+/**
+ * Imports an existing object's XML definition from the live account into
+ * the local SDF project. This is the primary path for object types Oracle
+ * recommends importing rather than hand-authoring (forms, dashboards,
+ * workbooks/datasets, KPI scorecards, financial layouts, etc.) — writes only
+ * to the local project, but still requires CI auth to reach the account.
+ */
+export async function importObject({ type, scriptId, destinationFolder = "/Objects" }) {
   return runSuitecloud([
-    "project:deploy",
-    "--authid", authId,
-    "--accountspecificvalues", "WARNING",
+    "object:import",
+    "--type", type,
+    "--scriptid", scriptId,
+    "--destinationfolder", destinationFolder,
   ]);
 }

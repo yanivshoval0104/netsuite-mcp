@@ -17,8 +17,10 @@ glass icon) and type the page name in bold below — it will jump straight there
 2. Click the SuiteCloud subtab.
 3. Check REST Web Services.
 4. Check OAuth 2.0.
-5. Confirm Custom Records is checked.
-6. Click Save. Accept any Terms of Service popup if one appears.
+5. Check **SuiteCloud Development Framework** — required for `account:setup:ci`/SDF deploys to
+   work at all; easy to miss since it's a separate checkbox from OAuth 2.0/REST Web Services.
+6. Confirm Custom Records is checked.
+7. Click Save. Accept any Terms of Service popup if one appears.
 
 ---
 
@@ -70,27 +72,31 @@ definitions.
 
 ---
 
-## 5. OAuth 2.0 Client Credentials (M2M) Integration Setup
+## 5. OAuth 2.0 Client Credentials (M2M) Certificate Setup
 
 **Purpose:** Allow authenticating the metadata (SDF) integration, which uses a separate
 credential type from the existing token-based data integration.
 
+**Correction (verified live 2026-08-16):** a custom Integration record (with Client Credentials
+Grant) is **not** needed for this — and creating one, as earlier drafts of this doc said, doesn't
+work: the SuiteCloud CLI's `account:setup:ci` requires the certificate to be mapped to NetSuite's
+own **pre-built "SuiteCloud Development Integration"** application, not a custom one. Using a
+custom Integration record here produces a Certificate ID that looks valid but fails with "Server
+error... verify OAuth 2.0 and SuiteCloud Development Framework are enabled" regardless of feature
+state.
+
 **Admin tasks:**
-1. Go to Setup → Integrations → Manage Integrations.
-2. Click New.
-3. Set Name to "Claude MCP Integration".
-4. Set State to Enabled.
-5. Under Authentication, check Client Credentials (Machine to Machine) Grant.
-6. If a Scope section appears, check REST Web Services.
-7. Click Save.
-8. Copy the Client ID shown after saving.
-9. Search "OAuth 2.0 Client Credentials Setup" and click New (or Create Certificate).
-10. Upload the certificate file we send you (`netsuite_public.pem`).
-11. Set Entity to the integration user.
-12. Set Role to the role configured in tasks 2-4.
-13. Set Application/Integration to "Claude MCP Integration".
-14. Click Save.
-15. Copy the Certificate ID shown after saving.
+1. Search "OAuth 2.0 Client Credentials Setup" and click New (or Create Certificate).
+2. Upload the certificate file we send you (`netsuite_public.pem`).
+3. Set Entity to the integration user.
+4. Set Role to the role configured in tasks 2-4.
+5. Set Application to **"SuiteCloud Development Integration"** (a pre-built option in the
+   dropdown — not something you create yourself).
+6. Click Save.
+7. Copy the Certificate ID shown after saving.
+
+(A custom Integration record like the one described in earlier instructions may still be useful
+for other OAuth 2.0 purposes, but is not part of this specific SDF/CLI setup.)
 
 ---
 
@@ -101,3 +107,32 @@ credential type from the existing token-based data integration.
 **Admin tasks:**
 1. Send us the Client ID from task 5.
 2. Send us the Certificate ID from task 5.
+
+---
+
+## 7. Additional Account Features for Extended Metadata Coverage
+
+**Purpose:** Tasks 1-6 cover TBA data access and enough SDF access to manage custom fields.
+Extending metadata deploy to custom record types/segments/transaction types, scripts, workflow,
+and advanced templates needs a few more account-level feature toggles that tasks 1-6 don't turn
+on. This task is independent of tasks 1-6 — it doesn't block sending back the Client ID/Certificate ID.
+
+**Admin tasks:**
+1. Go to Setup → Company → Enable Features → SuiteCloud.
+2. Check **Custom Segments** — needed for Custom Segment objects.
+3. Check **Custom Transactions** (may be on this tab or under the Transactions subtab, varies
+   by version) — needed for Custom Transaction Type objects.
+4. Confirm **Client SuiteScript** and **Server SuiteScript** are checked — needed for every
+   script type (Client Script, User Event Script, Scheduled Script, Map/Reduce Script, Suitelet,
+   RESTlet, Portlet, Mass Update Script, Workflow Action Script, plug-ins).
+5. Check **Workflow** (may be on this tab or under Company, varies by version) — needed for
+   SuiteFlow/Workflow objects.
+6. Check **Advanced PDF/HTML Templates** (may be under Company → Printing & Fax/Email, varies
+   by version) — needed for Advanced PDF/HTML Template objects.
+7. Click Save on each screen. Accept any Terms of Service popup if one appears.
+
+**Note:** exact menu locations for several of these shift by NetSuite version/edition — use the
+global search bar (magnifying glass) and search the feature name in **bold** above if a path
+doesn't match. If any feature is still missing once we start deploying, `suitecloud
+project:validate` reports an explicit "feature not enabled" error naming exactly which one —
+that's the fastest way to close any gap this list misses.

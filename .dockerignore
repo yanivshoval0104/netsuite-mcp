@@ -1,0 +1,11 @@
+node_modules
+.git
+.env
+.env.*
+secrets/*.pem
+.DS_Store
+.claude
+*.credentials
+.suitecloud-sdk
+sdf/.suitecloud-sdk
+sdf/project.json

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "MCP server exposing NetSuite REST Record API operations (create/read/update/delete/query) as tools",
+  "description": "MCP server exposing NetSuite REST Record API data operations and SDF metadata deployment (custom fields, records, scripts, workflows, and more) as tools",
   "main": "src/server.js",
   "bin": {
     "netsuite-mcp": "src/server.js"
